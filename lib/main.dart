@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 
 import 'dart:convert';
 
+import 'package:flutter/services.dart';
+
 void main() {
   runApp(const AbsensiApp());
 }
@@ -14,108 +16,112 @@ class AbsensiApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Absensi KSE QR',
+      title: 'Absensi KSE UNS',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepOrange),
         useMaterial3: true,
       ),
-      home: const ScannerScreen(),
+      home: const HomeScreen(),
     );
   }
 }
 
-class ScannerScreen extends StatefulWidget {
-  const ScannerScreen({super.key});
+// -----------------------------------------------------------------------------
+// 1. HALAMAN UTAMA (2 TOMBOL BESAR)
+// -----------------------------------------------------------------------------
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
 
   @override
-  State<ScannerScreen> createState() => _ScannerScreenState();
-}
-
-class _ScannerScreenState extends State<ScannerScreen> {
-  bool isProcessing = false;
-
-  // URL API Backend VPS Keno / Google Apps Script
-  final String apiUrl =
-      "https://script.google.com/macros/s/AKfycbwh7r5Dn8thxaA0ndDuN4vxvvnuF0mWZyps1fC0giRynjKiGjSMNTAwLDFEJHZmWWZi/exec";
-
-  void _onDetect(BarcodeCapture capture) async {
-    if (isProcessing) return;
-    final List<Barcode> barcodes = capture.barcodes;
-
-    for (final barcode in barcodes) {
-      if (barcode.rawValue != null) {
-        setState(() {
-          isProcessing = true;
-        });
-
-        String qrData = barcode.rawValue!;
-        await _sendDataToBackend(qrData, "QR_Scan");
-
-        await Future.delayed(const Duration(seconds: 2));
-        if (mounted) {
-          setState(() {
-            isProcessing = false;
-          });
-        }
-        break;
-      }
-    }
-  }
-
-  Future<void> _sendDataToBackend(String uidData, String method) async {
-    setState(() {
-      isProcessing = true;
-    });
-
-    try {
-      Map<String, dynamic> payload = {
-        "uid": uidData,
-        "method": method,
-        "timestamp": DateTime.now().toIso8601String(),
-      };
-
-      // Mengirim request POST ke Google Apps Script / VPS
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(payload),
-      );
-
-      if (response.statusCode == 200 || response.statusCode == 302) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("✅ Absen Berhasil! (UID: $uidData)"),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 2),
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Absensi KSE UNS',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Icon(
+              Icons.qr_code_scanner_rounded,
+              size: 80,
+              color: Colors.deepOrange,
             ),
-          );
-        }
-      } else {
-        throw Exception("Server Error: ${response.statusCode}");
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("❌ Gagal Absen: $e"),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          isProcessing = false;
-        });
-      }
-    }
+            const SizedBox(height: 12),
+            const Text(
+              "Sistem Presensi Kegiatan",
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            const Text(
+              "Pilih metode pencatatan kehadiran beswan",
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+            const SizedBox(height: 40),
+
+            // TOMBOL 1: SCAN QR
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.deepOrange,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 4,
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ScannerScreen(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.qr_code_scanner, size: 28),
+              label: const Text(
+                'Scan QR Code',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // TOMBOL 2: INPUT MANUAL UID
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.deepOrange,
+                side: const BorderSide(color: Colors.deepOrange, width: 2),
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              onPressed: () {
+                _showManualInputDialog(context);
+              },
+              icon: const Icon(Icons.keyboard_alt_outlined, size: 28),
+              label: const Text(
+                'Input Manual UID',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
-  // Dialog Popup Input Manual (Mengambang di Tengah Layar)
-  void _showManualInputDialog() {
+  // DIALOG POPUP INPUT MANUAL (Floating di Tengah)
+  void _showManualInputDialog(BuildContext context) {
     final TextEditingController uidController = TextEditingController();
 
     showDialog(
@@ -152,7 +158,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  "Masukkan ID Registrasi Yayasan jika anggota lupa membawa KTA.",
+                  "Masukkan ID Registrasi Yayasan jika anggota tidak membawa QR.",
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 12, color: Colors.grey),
                 ),
@@ -167,7 +173,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
                     letterSpacing: 1.2,
                   ),
                   decoration: InputDecoration(
-                    hintText: "Contoh: KSE26-001",
+                    hintText: "Contoh: KSE-001",
                     contentPadding: const EdgeInsets.symmetric(
                       vertical: 14,
                       horizontal: 16,
@@ -211,7 +217,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
                           String uid = uidController.text.trim();
                           if (uid.isNotEmpty) {
                             Navigator.pop(context);
-                            _sendDataToBackend(uid, "Manual_Input");
+                            sendDataToBackend(context, uid, "Manual_Input");
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
@@ -233,30 +239,52 @@ class _ScannerScreenState extends State<ScannerScreen> {
       },
     );
   }
+}
+
+// -----------------------------------------------------------------------------
+// 2. HALAMAN SCANNER KAMERA
+// -----------------------------------------------------------------------------
+class ScannerScreen extends StatefulWidget {
+  const ScannerScreen({super.key});
+
+  @override
+  State<ScannerScreen> createState() => _ScannerScreenState();
+}
+
+class _ScannerScreenState extends State<ScannerScreen> {
+  bool isProcessing = false;
+
+  void _onDetect(BarcodeCapture capture) async {
+    if (isProcessing) return;
+    final List<Barcode> barcodes = capture.barcodes;
+
+    for (final barcode in barcodes) {
+      if (barcode.rawValue != null) {
+        setState(() {
+          isProcessing = true;
+        });
+
+        String qrData = barcode.rawValue!.trim();
+        await sendDataToBackend(context, qrData, "QR_Scan");
+
+        await Future.delayed(const Duration(seconds: 2));
+        if (mounted) {
+          setState(() {
+            isProcessing = false;
+          });
+        }
+        break;
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Absensi KSE UNS',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Scan QR Code'), elevation: 0),
       body: Stack(
         children: [
-          // 1. Kamera Pemindai QR
-          MobileScanner(
-            fit: BoxFit.cover,
-            onDetect: (capture) {
-              // Logika pemindaian data QR
-              _onDetect(capture);
-            },
-          ),
-
-          // 2. Bingkai Pemindai di Tengah Layar
+          MobileScanner(fit: BoxFit.cover, onDetect: _onDetect),
           Center(
             child: Container(
               width: 250,
@@ -267,36 +295,6 @@ class _ScannerScreenState extends State<ScannerScreen> {
               ),
             ),
           ),
-
-          // 3. Tombol Melayang (Floating) di Tengah Bawah Layar
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 40.0),
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepOrange,
-                  foregroundColor: Colors.white,
-                  elevation: 8,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 14,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                ),
-                onPressed: _showManualInputDialog,
-                icon: const Icon(Icons.edit_note, size: 22),
-                label: const Text(
-                  "Input UID Manual",
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-          ),
-
-          // 4. Indicator Saat Mengirim Data
           if (isProcessing)
             Container(
               color: Colors.black54,
@@ -307,5 +305,57 @@ class _ScannerScreenState extends State<ScannerScreen> {
         ],
       ),
     );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// 3. FUNGSI KIRIM DATA KE GOOGLE APPS SCRIPT
+// -----------------------------------------------------------------------------
+Future<void> sendDataToBackend(
+  BuildContext context,
+  String uidData,
+  String method,
+) async {
+  // Ganti dengan Web App URL Google Apps Script milikmu
+  final String apiUrl =
+      "https://script.google.com/macros/s/AKfycbwh7r5Dn8thxaA0ndDuN4vxvvnuF0mWZyps1fC0giRynjKiGjSMNTAwLDFEJHZmWWZi/exec";
+
+  try {
+    Map<String, dynamic> payload = {
+      "uid": uidData,
+      "method": method,
+      "timestamp": DateTime.now().toIso8601String(),
+    };
+
+    final response = await http.post(
+      Uri.parse(apiUrl),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(payload),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 302) {
+      HapticFeedback.vibrate();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("✅ Absen Berhasil! (UID: $uidData)"),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } else {
+      throw Exception("Server Error: ${response.statusCode}");
+    }
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("❌ Gagal Absen: $e"),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 }
