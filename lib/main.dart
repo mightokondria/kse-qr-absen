@@ -255,19 +255,34 @@ class _ScannerScreenState extends State<ScannerScreen> {
   bool isProcessing = false;
 
   void _onDetect(BarcodeCapture capture) async {
+    // Kunci proses agar tidak mengirim data berkali-kali dalam 1 detik
     if (isProcessing) return;
+
     final List<Barcode> barcodes = capture.barcodes;
 
     for (final barcode in barcodes) {
-      if (barcode.rawValue != null) {
+      final String? rawValue = barcode.rawValue;
+
+      if (rawValue != null && rawValue.trim().isNotEmpty) {
+        // 1. Kunci pemindai langsung sebelum proses async dimulai
         setState(() {
           isProcessing = true;
         });
 
-        String qrData = barcode.rawValue!.trim();
+        // 2. Bersihkan karakter enter (\n), spasi, dan carriage return (\r)
+        String qrData = rawValue
+            .replaceAll('\n', '')
+            .replaceAll('\r', '')
+            .trim();
+
+        debugPrint("🔍 [DEBUG SCAN]: Teks terbaca = '$qrData'");
+
+        // 3. Kirim data ke backend GAS
         await sendDataToBackend(context, qrData, "QR_Scan");
 
-        await Future.delayed(const Duration(seconds: 2));
+        // 4. Jeda 3 detik agar panitia punya waktu memindahkan HP ke QR berikutnya
+        await Future.delayed(const Duration(seconds: 3));
+
         if (mounted) {
           setState(() {
             isProcessing = false;
@@ -284,7 +299,21 @@ class _ScannerScreenState extends State<ScannerScreen> {
       appBar: AppBar(title: const Text('Scan QR Code'), elevation: 0),
       body: Stack(
         children: [
-          MobileScanner(fit: BoxFit.cover, onDetect: _onDetect),
+          // 1. Kamera Pemindai
+          MobileScanner(
+            fit: BoxFit.cover,
+            onDetect: _onDetect,
+            errorBuilder: (context, error) {
+              return Center(
+                child: Text(
+                  'Kamera Error: ${error.errorCode}',
+                  style: const TextStyle(color: Colors.white),
+                ),
+              );
+            },
+          ),
+
+          // 2. Bingkai Pemindai di Tengah
           Center(
             child: Container(
               width: 250,
@@ -295,11 +324,26 @@ class _ScannerScreenState extends State<ScannerScreen> {
               ),
             ),
           ),
+
+          // 3. Overlay Loading Saat Mengirim Data
           if (isProcessing)
             Container(
               color: Colors.black54,
               child: const Center(
-                child: CircularProgressIndicator(color: Colors.deepOrange),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: Colors.deepOrange),
+                    SizedBox(height: 16),
+                    Text(
+                      "Memproses Absen...",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
         ],
@@ -316,7 +360,7 @@ Future<void> sendDataToBackend(
   String uidData,
   String method,
 ) async {
-  // Ganti dengan Web App URL Google Apps Script milikmu
+  // Ganti dengan URL Web App Google Apps Script milikmu
   final String apiUrl =
       "https://script.google.com/macros/s/AKfycbwh7r5Dn8thxaA0ndDuN4vxvvnuF0mWZyps1fC0giRynjKiGjSMNTAwLDFEJHZmWWZi/exec";
 
@@ -327,21 +371,97 @@ Future<void> sendDataToBackend(
       "timestamp": DateTime.now().toIso8601String(),
     };
 
-    final response = await http.post(
+    var response = await http.post(
       Uri.parse(apiUrl),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode(payload),
     );
 
-    if (response.statusCode == 200 || response.statusCode == 302) {
+    // Google Apps Script mengembalikan HTTP 302 Redirect yang berisi header Location URL JSON
+    if (response.statusCode == 302 ||
+        response.statusCode == 301 ||
+        response.statusCode == 307) {
+      final redirectUrl = response.headers['location'];
+      if (redirectUrl != null) {
+        response = await http.get(Uri.parse(redirectUrl));
+      }
+    }
+
+    if (response.statusCode == 200) {
+      // Getaran konfirmasi
       HapticFeedback.vibrate();
+
+      // Membaca respon JSON dari Google Apps Script untuk mendapatkan Nama
+      final resData = jsonDecode(response.body);
+      String nama = resData['nama'] ?? "Nama Tidak Ditemukan";
+
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("✅ Absen Berhasil! (UID: $uidData)"),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
-          ),
+        // Tampilkan Popup Alert Berhasil
+        showDialog(
+          context: context,
+          barrierDismissible: true,
+          builder: (context) {
+            // Otomatis menutup dialog dalam 2.5 detik untuk scan berikutnya
+            Future.delayed(const Duration(milliseconds: 2500), () {
+              if (context.mounted && Navigator.canPop(context)) {
+                Navigator.pop(context);
+              }
+            });
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              icon: const Icon(
+                Icons.check_circle_rounded,
+                color: Colors.green,
+                size: 64,
+              ),
+              title: const Text(
+                "Absen Berhasil!",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    nama,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.deepOrange.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      "UID: $uidData ($method)",
+                      style: TextStyle(
+                        color: Colors.deepOrange.shade800,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Selesai"),
+                ),
+              ],
+            );
+          },
         );
       }
     } else {
