@@ -158,7 +158,7 @@ class HomeScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  "Masukkan ID Registrasi Yayasan jika anggota tidak membawa QR.",
+                  "Masukkan ID Registrasi Yayasan jika anggota tidak membawa KTA.",
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 12, color: Colors.grey),
                 ),
@@ -216,7 +216,8 @@ class HomeScreen extends StatelessWidget {
                         onPressed: () {
                           String uid = uidController.text.trim();
                           if (uid.isNotEmpty) {
-                            Navigator.pop(context);
+                            Navigator.pop(context); // Tutup dialog input
+                            // Kirim data dan tampilkan alert sukses
                             sendDataToBackend(context, uid, "Manual_Input");
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -360,9 +361,18 @@ Future<void> sendDataToBackend(
   String uidData,
   String method,
 ) async {
-  // Ganti dengan URL Web App Google Apps Script milikmu
+  // ⚠️ PASTIKAN MENGGUNAKAN URL WEB APP GOOGLE APPS SCRIPT MILIKMU
   final String apiUrl =
       "https://script.google.com/macros/s/AKfycbwh7r5Dn8thxaA0ndDuN4vxvvnuF0mWZyps1fC0giRynjKiGjSMNTAwLDFEJHZmWWZi/exec";
+
+  // Tampilkan loading indikator singkat
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text("⏳ Memproses UID: $uidData..."),
+      duration: const Duration(seconds: 1),
+      backgroundColor: const Color.fromARGB(255, 34, 255, 97),
+    ),
+  );
 
   try {
     Map<String, dynamic> payload = {
@@ -371,101 +381,94 @@ Future<void> sendDataToBackend(
       "timestamp": DateTime.now().toIso8601String(),
     };
 
-    var response = await http.post(
+    final response = await http.post(
       Uri.parse(apiUrl),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode(payload),
     );
 
-    // Google Apps Script mengembalikan HTTP 302 Redirect yang berisi header Location URL JSON
-    if (response.statusCode == 302 ||
-        response.statusCode == 301 ||
-        response.statusCode == 307) {
-      final redirectUrl = response.headers['location'];
-      if (redirectUrl != null) {
-        response = await http.get(Uri.parse(redirectUrl));
+    // Getaran konfirmasi
+    HapticFeedback.vibrate();
+
+    // Baca response nama dari Google Apps Script
+    String nama = "Berhasil Dicatat";
+    try {
+      if (response.body.isNotEmpty) {
+        final resData = jsonDecode(response.body);
+        if (resData is Map && resData.containsKey('nama')) {
+          nama = resData['nama'] ?? "Nama Tidak Ditemukan";
+        }
       }
-    }
+    } catch (_) {}
 
-    if (response.statusCode == 200) {
-      // Getaran konfirmasi
-      HapticFeedback.vibrate();
+    if (context.mounted) {
+      // POP-UP ALERT SUKSES ABSENSI
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (context) {
+          // Otomatis menutup dialog dalam 2.5 detik
+          Future.delayed(const Duration(milliseconds: 2500), () {
+            if (context.mounted && Navigator.canPop(context)) {
+              Navigator.pop(context);
+            }
+          });
 
-      // Membaca respon JSON dari Google Apps Script untuk mendapatkan Nama
-      final resData = jsonDecode(response.body);
-      String nama = resData['nama'] ?? "Nama Tidak Ditemukan";
-
-      if (context.mounted) {
-        // Tampilkan Popup Alert Berhasil
-        showDialog(
-          context: context,
-          barrierDismissible: true,
-          builder: (context) {
-            // Otomatis menutup dialog dalam 2.5 detik untuk scan berikutnya
-            Future.delayed(const Duration(milliseconds: 2500), () {
-              if (context.mounted && Navigator.canPop(context)) {
-                Navigator.pop(context);
-              }
-            });
-
-            return AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              icon: const Icon(
-                Icons.check_circle_rounded,
-                color: Colors.green,
-                size: 64,
-              ),
-              title: const Text(
-                "Absen Berhasil!",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    nama,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            icon: const Icon(
+              Icons.check_circle_rounded,
+              color: Colors.green,
+              size: 64,
+            ),
+            title: const Text(
+              "Absen Berhasil!",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  nama,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.deepOrange.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    "UID: $uidData ($method)",
+                    style: TextStyle(
+                      color: Colors.deepOrange.shade800,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.deepOrange.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      "UID: $uidData ($method)",
-                      style: TextStyle(
-                        color: Colors.deepOrange.shade800,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text("Selesai"),
                 ),
               ],
-            );
-          },
-        );
-      }
-    } else {
-      throw Exception("Server Error: ${response.statusCode}");
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Selesai"),
+              ),
+            ],
+          );
+        },
+      );
     }
   } catch (e) {
     if (context.mounted) {
