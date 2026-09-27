@@ -24,6 +24,11 @@ dev_dependencies:
 flutter_app_name:
   name: "Absensi KSE UNS"
 
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/icon.png"
+
 flutter:
   uses-material-design: true
   assets:

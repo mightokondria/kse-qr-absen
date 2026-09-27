@@ -363,7 +363,7 @@ Future<void> sendDataToBackend(
 ) async {
   // ⚠️ PASTIKAN MENGGUNAKAN URL WEB APP GOOGLE APPS SCRIPT MILIKMU
   final String apiUrl =
-      "https://script.google.com/macros/s/AKfycbwh7r5Dn8thxaA0ndDuN4vxvvnuF0mWZyps1fC0giRynjKiGjSMNTAwLDFEJHZmWWZi/exec";
+      "https://script.google.com/macros/s/AKfycbxGaeNMetA_Tti6oLNBez5t7P8HZcPP-9fBTfs_Y-WrHRozyxla7drIZh9dHyhcEBavTQ/exec";
 
   // Tampilkan loading indikator singkat
   ScaffoldMessenger.of(context).showSnackBar(
