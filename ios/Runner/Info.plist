@@ -19,7 +19,7 @@
 	<key>CFBundleName</key>
 	<string>absensi_kse_qr</string>
 	<key>CFBundlePackageType</key>
-	<string>APPL</string>
+	<string>Absensi KSE UNS</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleSignature</key>
