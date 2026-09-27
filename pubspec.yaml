@@ -14,6 +14,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   mobile_scanner: ^7.4.2
   http: ^1.6.0
+  flutter_svg: ^2.0.10
 
 dev_dependencies:
   flutter_test:
@@ -33,4 +34,10 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/icon.png
+    - assets/images/logo-kse-uns.svg
+    - assets/images/logo-kse-uns.png
+    - assets/images/logo-kse-uns-2.png
+
+dependency_overrides:
+  xml: ^6.5.0
 

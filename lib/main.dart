@@ -6,6 +6,9 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart';
 
+// Variabel warna terpusat
+const Color primaryColor = Color(0xFF1A53C6);
+
 void main() {
   runApp(const AbsensiApp());
 }
@@ -19,7 +22,7 @@ class AbsensiApp extends StatelessWidget {
       title: 'Absensi KSE UNS',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepOrange),
+        colorScheme: ColorScheme.fromSeed(seedColor: primaryColor),
         useMaterial3: true,
       ),
       home: const HomeScreen(),
@@ -49,11 +52,7 @@ class HomeScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Icon(
-              Icons.qr_code_scanner_rounded,
-              size: 80,
-              color: Colors.deepOrange,
-            ),
+            Image.asset('assets/images/logo-kse-uns-2.png', height: 100),
             const SizedBox(height: 12),
             const Text(
               "Sistem Presensi Kegiatan",
@@ -70,7 +69,7 @@ class HomeScreen extends StatelessWidget {
             // TOMBOL 1: SCAN QR
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.deepOrange,
+                backgroundColor: primaryColor,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 shape: RoundedRectangleBorder(
@@ -98,8 +97,8 @@ class HomeScreen extends StatelessWidget {
             // TOMBOL 2: INPUT MANUAL UID
             OutlinedButton.icon(
               style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.deepOrange,
-                side: const BorderSide(color: Colors.deepOrange, width: 2),
+                foregroundColor: primaryColor,
+                side: const BorderSide(color: primaryColor, width: 2),
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -142,12 +141,12 @@ class HomeScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.deepOrange.shade50,
+                    color: primaryColor.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
                     Icons.badge_outlined,
-                    color: Colors.deepOrange,
+                    color: primaryColor,
                     size: 32,
                   ),
                 ),
@@ -184,7 +183,7 @@ class HomeScreen extends StatelessWidget {
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(
-                        color: Colors.deepOrange,
+                        color: primaryColor,
                         width: 2,
                       ),
                     ),
@@ -206,7 +205,7 @@ class HomeScreen extends StatelessWidget {
                     Expanded(
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.deepOrange,
+                          backgroundColor: primaryColor,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
@@ -223,7 +222,7 @@ class HomeScreen extends StatelessWidget {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text("UID tidak boleh kosong!"),
-                                backgroundColor: Colors.orange,
+                                backgroundColor: primaryColor,
                               ),
                             );
                           }
@@ -320,7 +319,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
               width: 250,
               height: 250,
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.deepOrange, width: 3),
+                border: Border.all(color: primaryColor, width: 3),
                 borderRadius: BorderRadius.circular(16),
               ),
             ),
@@ -334,7 +333,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircularProgressIndicator(color: Colors.deepOrange),
+                    CircularProgressIndicator(color: primaryColor),
                     SizedBox(height: 16),
                     Text(
                       "Memproses Absen...",
@@ -446,13 +445,13 @@ Future<void> sendDataToBackend(
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.deepOrange.shade50,
+                    color: primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     "UID: $uidData ($method)",
-                    style: TextStyle(
-                      color: Colors.deepOrange.shade800,
+                    style: const TextStyle(
+                      color: primaryColor,
                       fontWeight: FontWeight.w600,
                       fontSize: 12,
                     ),
